@@ -26,8 +26,8 @@ Copy-Item $Source "$CommandsDir\startnew.md" -Force
 Write-Host "v /startnew command installed"
 
 # Check if claude-code-setup plugin is already installed
-$PluginInstalled = Get-ChildItem "$HOME\.claude\plugins\" -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -match "claude-code-setup" }
+$PluginInstalled = Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction SilentlyContinue |
+    Select-String -Pattern "claude-code-setup"
 
 if ($PluginInstalled) {
     Write-Host "v claude-code-setup plugin already installed"

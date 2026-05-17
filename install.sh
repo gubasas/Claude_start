@@ -29,7 +29,7 @@ cp "$SOURCE" "$COMMANDS_DIR/startnew.md"
 echo "✓ /startnew command installed"
 
 # Check if claude-code-setup plugin is already installed
-PLUGIN_INSTALLED=$(ls ~/.claude/plugins/ 2>/dev/null | grep -i "claude-code-setup" || echo "")
+PLUGIN_INSTALLED=$(cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | grep -i "claude-code-setup" || echo "")
 
 if [ -n "$PLUGIN_INSTALLED" ]; then
   echo "✓ claude-code-setup plugin already installed"

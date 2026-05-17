@@ -94,12 +94,12 @@ uname -s
 
 **Mac/Linux:**
 ```bash
-ls ~/.claude/plugins/ 2>/dev/null | grep -i "claude-code-setup" || echo "NOT_INSTALLED"
+cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | grep -i "claude-code-setup" || echo "NOT_INSTALLED"
 ```
 
 **Windows (PowerShell):**
 ```powershell
-if (Get-ChildItem "$HOME\.claude\plugins\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "claude-code-setup" }) { "INSTALLED" } else { "NOT_INSTALLED" }
+if (Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction SilentlyContinue | Select-String -Pattern "claude-code-setup") { "INSTALLED" } else { "NOT_INSTALLED" }
 ```
 
 - **Installed** → tell the user "claude-code-setup found, running analysis..." and continue to Step 5.
