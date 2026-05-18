@@ -2,7 +2,7 @@
 
 One command to set up Claude Code properly for any new project — memory, config, automations, all of it.
 
-Works in Claude Code anywhere it runs — terminal, VS Code, and the Claude desktop app's Code mode. The one-time plugin install step needs the terminal CLI (the script handles this for you). Run `/startnew` in any new project folder and it sets up everything automatically — CLAUDE.md, a two-layer memory system, project config, MCP servers, hooks, subagents, and slash commands.
+Works in Claude Code anywhere it runs — terminal, VS Code, and the Claude desktop app's Code mode. The one-time plugin install step needs the terminal CLI (the script handles this for you).
 
 ---
 
@@ -67,22 +67,26 @@ If no files were detected (or you chose to answer manually), it asks six questio
 5. **Common shell commands** — what you'll run most (`npm run dev`, `python app.py`, `make test`, etc.)
 6. **Reference links** — docs, Figma, repos, API references (or "none" to skip)
 
+Questions 2, 3, and 5 also accept `suggest` instead of an answer — type that and `/startnew` proposes a recommendation based on what you've told it so far.
+
+Every technical term that comes up (git init, MCP server, hook, subagent, slash command) is explained in plain language the first time it appears.
+
 ### Step 2 — CLAUDE.md
 
-Writes a tailored `CLAUDE.md` with: project overview, tech stack, goals, development commands, code conventions placeholder, architecture notes placeholder, and (if provided) a reference links section. It also embeds the memory usage rules so Claude knows exactly how to use the memory system going forward.
+Writes a tailored `CLAUDE.md`. Section order is intentional: **Memory System comes directly after Project Overview** — before tech stack and goals — so Claude's behavioral rules carry maximum attention weight at the top of every session. Below that: tech stack, project goals, development commands, conventions, architecture notes, and (if provided) reference links.
 
-### Step 3 — Two-layer memory system
+### Step 3 — Two-layer memory system + memory hooks
 
 Creates a `memory/` folder with two layers:
 
 - **`memory/MEMORY.md`** — the index. Always loaded into context. One-liner per topic, pointers only — never detail. Stays concise so it never gets truncated.
-- **`memory/project.md`** — the first detail file, pre-populated with everything from the intake. Future detail files are created here as the project evolves (decisions made, bugs root-caused, patterns established, constraints discovered).
+- **`memory/project.md`** — the first detail file, pre-populated with everything from the intake. Future detail files are created as the project evolves (decisions made, bugs root-caused, patterns established, constraints discovered).
 
-Also creates **`.claude/settings.json`** with stack-appropriate permissions pre-filled based on your answer to question 5 (npm, pip, go, cargo, make, etc.).
+Also creates **`.claude/settings.json`** with stack-appropriate permissions, and installs three memory-maintenance hooks automatically (see below).
 
 ### Step 4 — Plugin check
 
-Checks `installed_plugins.json` to see if `claude-code-setup` is installed. If missing, it tells you what to run and skips straight to the summary — the rest of the setup (CLAUDE.md, memory, config) is still complete.
+Checks `installed_plugins.json` to see if `claude-code-setup` is installed. If missing, it tells you what to run and skips straight to the summary — the rest of the setup (CLAUDE.md, memory, config, memory hooks) is still complete.
 
 ### Step 5 — Reference link fetching and analysis
 
@@ -95,7 +99,7 @@ Then runs `claude-code-setup` analysis, using the fetched content to make recomm
 
 ### Step 6 — Execute all recommendations
 
-Applies every recommendation from `claude-code-setup` automatically:
+Three memory-maintenance hooks are always installed regardless of `claude-code-setup` (see "Files created per project" below). Then, every recommendation from `claude-code-setup` is applied automatically:
 
 | Category | What gets created |
 |---|---|
@@ -104,7 +108,7 @@ Applies every recommendation from `claude-code-setup` automatically:
 | **Subagents** | Agent file created at `.claude/agents/{name}.md` with YAML frontmatter |
 | **Slash commands** | Command file created at `.claude/commands/{name}.md` |
 
-No approval step — everything runs automatically.
+No approval step — everything runs automatically. If you want to know what any installed tool does, just ask Claude — it'll explain anything in your `.claude/` folder.
 
 ### Step 7 & 8 — Final update and summary
 
@@ -112,19 +116,42 @@ Appends a `## Claude Code Setup` section to `CLAUDE.md` listing every automation
 
 ---
 
+## Memory hooks — always installed
+
+These three hooks are installed in every project by `/startnew`, independent of `claude-code-setup`:
+
+| Hook | When it fires | What it does |
+|---|---|---|
+| `memory-signal.sh` | After each Claude response | Scans for trigger phrases (decisions, fixes, preferences) and prompts Claude to write a memory entry |
+| `memory-consolidate.sh` | Once, when the session grows long (~75% context) | Silently consolidates the session to memory files, then shows a checkpoint message offering `/compact` or keep-going |
+| `memory-sweep.sh` | Every 20 exchanges | Periodic backup pass — catches anything signal detection missed |
+
+**The checkpoint message** (from `memory-consolidate`) looks like this when it fires:
+
+> "Quick checkpoint — this session is getting long. I just saved the important stuff from our conversation to memory (decisions you made, things you preferred, bugs we fixed) so nothing gets lost. In a bit, my short-term memory will automatically shrink to make room (this is called compaction). Two options: 1) Type `/compact` now — fresh clean slate, all the important stuff is in memory anyway. 2) Keep going as-is. Just hit 1 or 2."
+
+This is normal — it means the memory system is working.
+
+---
+
 ## Files created per project
 
 ```
 {project-root}/
-  CLAUDE.md                          ← tailored project context for Claude
+  CLAUDE.md                               ← tailored project context for Claude
+  .gitignore                              ← created or updated
   memory/
-    MEMORY.md                        ← memory index (always loaded)
-    project.md                       ← project overview detail file
+    MEMORY.md                             ← memory index (always loaded)
+    project.md                            ← project overview detail file
   .claude/
-    settings.json                    ← permissions + MCP server config
-    hooks/{hook-name}.sh             ← hook scripts (if recommended)
-    agents/{agent-name}.md           ← subagent definitions (if recommended)
-    commands/{command-name}.md       ← slash commands (if recommended)
+    settings.json                         ← permissions + MCP server config + hook registration
+    hooks/
+      memory-signal.sh                    ← always installed (decision/fix/preference detection)
+      memory-consolidate.sh               ← always installed (~75% context checkpoint)
+      memory-sweep.sh                     ← always installed (periodic backup)
+      {other-hooks}.sh                    ← from claude-code-setup recommendations (if any)
+    agents/{agent-name}.md                ← subagent definitions (if recommended)
+    commands/{command-name}.md            ← slash commands (if recommended)
 ```
 
 ---
