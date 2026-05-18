@@ -32,7 +32,7 @@ $PluginInstalled = Get-Content "$HOME\.claude\plugins\installed_plugins.json" -E
 if ($PluginInstalled) {
     Write-Host "v claude-code-setup plugin already installed"
     Write-Host ""
-    Write-Host "All done! Open any project folder in Claude Code and type /startnew"
+    Write-Host "Installed. /startnew is now available in any Claude Code session (terminal, VS Code, or the Claude desktop app's Code mode)."
 } else {
     Write-Host ""
     Write-Host "One more step: installing the claude-code-setup plugin."

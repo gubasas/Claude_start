@@ -34,7 +34,7 @@ PLUGIN_INSTALLED=$(cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | gr
 if [ -n "$PLUGIN_INSTALLED" ]; then
   echo "✓ claude-code-setup plugin already installed"
   echo ""
-  echo "All done! Open any project folder in Claude Code and type /startnew"
+  echo "Installed. /startnew is now available in any Claude Code session (terminal, VS Code, or the Claude desktop app's Code mode)."
 else
   echo ""
   echo "One more step: installing the claude-code-setup plugin."

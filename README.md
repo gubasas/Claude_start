@@ -1,6 +1,8 @@
 # Claude_start
 
-A one-command project bootstrap for Claude Code. Run `/startnew` in any new project folder and it sets up everything automatically — CLAUDE.md, a two-layer memory system, project config, MCP servers, hooks, subagents, and slash commands.
+One command to set up Claude Code properly for any new project — memory, config, automations, all of it.
+
+Works in Claude Code anywhere it runs — terminal, VS Code, and the Claude desktop app's Code mode. The one-time plugin install step needs the terminal CLI (the script handles this for you). Run `/startnew` in any new project folder and it sets up everything automatically — CLAUDE.md, a two-layer memory system, project config, MCP servers, hooks, subagents, and slash commands.
 
 ---
 

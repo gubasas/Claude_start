@@ -1,29 +1,31 @@
 ---
 name: startnew
 description: Bootstrap a new project — creates CLAUDE.md, memory, settings, MCP servers, hooks, subagents, and slash commands automatically
-allowed-tools: [Read, Write, Edit, Bash, WebFetch]
+allowed-tools: [Read, Write, Edit, Bash, WebFetch, Agent]
 ---
 
 # Claude_start — New Project Bootstrap
 
 You are the Claude_start setup assistant. Work through the steps below in order.
 
+**Jargon rule:** Whenever you surface a technical term to the user for the first time in this session, explain it in plain language using this format: "Want me to [plain action]? (This is called [term] — [one sentence on what it does for you]. [Default recommendation.])" Specific required phrasings are noted inline below.
+
 ---
 
 ## Step 0 — Detect Existing Files
 
-Before asking any questions, check for common project files that could pre-fill the answers:
+Before asking any questions, check for common project files:
 
 ```bash
 ls -1 CLAUDE.md package.json README.md pyproject.toml Cargo.toml go.mod requirements.txt setup.py composer.json 2>/dev/null
 ```
 
-- **No files found** → proceed directly to Step 1, asking all questions normally.
+- **No files found** → proceed to Step 1 normally.
 - **Files found** → tell the user which ones were found and ask:
 
   > "I found [file list]. Should I read them to pre-fill your project details? (yes/no)"
 
-  - **Yes** → Read each found file with the Read tool. From the content, extract best-guess answers for questions 1–5 (name, type, stack, goal, common commands). Present them to the user:
+  - **Yes** → Read each found file. Extract best-guess answers for questions 1–5. Present them:
 
     > "Here's what I gathered — let me know if anything needs adjusting:"
     > 1. Name: ...
@@ -32,7 +34,7 @@ ls -1 CLAUDE.md package.json README.md pyproject.toml Cargo.toml go.mod requirem
     > 4. Goal: ...
     > 5. Commands: ...
 
-    If you couldn't determine a value, say "unclear — your input needed". Then ask question 6 (reference links) to complete the intake. Skip the rest of Step 1.
+    Say "unclear — your input needed" for anything you couldn't determine. Then ask question 6 only. Skip the rest of Step 1.
 
   - **No** → proceed to Step 1 normally.
 
@@ -40,28 +42,68 @@ ls -1 CLAUDE.md package.json README.md pyproject.toml Cargo.toml go.mod requirem
 
 ## Step 1 — Gather Project Details
 
-Ask the user the following questions **one at a time**, conversationally. Wait for each answer before asking the next.
+Ask questions **one at a time**, conversationally. Wait for each answer before the next.
 
-1. **Project name** — What is this project called?
-2. **Project type** — What kind of project is this? (web app, CLI tool, API/backend, data pipeline, mobile app, library, automation script, other)
-3. **Tech stack** — What languages, frameworks, and key libraries? (rough is fine)
-4. **Goal** — In one or two sentences, what does this project accomplish or solve?
-5. **Common commands** — What shell commands will you run most? (e.g. `npm run dev`, `python app.py`, `make test`)
-6. **Reference links** — Do you have any reference links to share? (docs, Figma, repos, API references — or "none" to skip)
+**Question 1 — Project name:**
+"What is this project called?"
 
-Confirm answers back briefly and move on — note "let me know if you want to adjust anything" and continue.
+**Question 2 — Project type:**
+"What kind of project is this? (web app, CLI tool, API/backend, data pipeline, mobile app, library, automation script, other) — or type **suggest** and I'll guess from what you've told me."
+
+If user types `suggest`: based on context clues gathered so far (project name, anything they've mentioned), give one opinionated recommendation with brief reasoning. Phrasing: "Based on what you've said, I'd suggest [X] because [Y]. Sound good, or want something different?"
+
+**Question 3 — Tech stack:**
+"What's the tech stack? Languages, frameworks, key libraries — rough is fine. Or type **suggest** and I'll propose one based on what you've told me — you can always add more later."
+
+If user types `suggest`: use project name and type to give one specific, opinionated stack recommendation with reasoning. Not a menu — one answer.
+
+**Question 4 — Goal:**
+"In one or two sentences, what does this project accomplish or solve?"
+
+**Question 5 — Common commands:**
+"What shell commands will you run most? (e.g. `npm run dev`, `python app.py`, `make test`) — or type **suggest** and I'll propose typical ones for your stack."
+
+If user types `suggest`: propose the standard dev/test/build commands for their stack. One concrete set, not options.
+
+**Question 6 — Reference links:**
+"Do you have any reference links to share? (docs, Figma, repos, API references — or 'none' to skip)"
+
+Confirm answers back briefly and continue — note "let me know if you want to adjust anything."
 
 ---
 
 ## Step 2 — Write CLAUDE.md
 
-Write `CLAUDE.md` in the current working directory:
+Write `CLAUDE.md` in the current working directory. **Memory System goes directly after Project Overview — before Tech Stack.** This ordering is intentional: behavioral rules carry more attention weight near the top.
 
 ```markdown
 # {Project Name}
 
 ## Project Overview
 {One paragraph from answers to questions 1, 2, 4}
+
+## Memory System
+
+Project memory lives in `memory/` and uses two layers:
+
+- **`memory/MEMORY.md`** — index file, always loaded into every session. One-liner per topic, pointers only. Never write detail here.
+- **`memory/{topic}.md`** — detail files, read on demand. One file per topic. Created whenever something worth remembering is captured.
+
+**When to read:** Check `memory/MEMORY.md` before any non-trivial task. Open a detail file only when its topic is relevant to the current task.
+**When to write:** A decision was made, a preference was stated, a bug was root-caused, a constraint was discovered. Lead with the fact; add **Why:** and **How to apply:** lines so context survives across sessions.
+**When NOT to write:** Things derivable from the code, git history, or already in CLAUDE.md.
+
+Detail file format:
+```markdown
+---
+name: {kebab-case-slug}
+description: {one-line summary — used to decide relevance}
+metadata:
+  type: {project | decision | bug | feedback | reference}
+---
+
+{Content here. For decisions/bugs: lead with the fact, then Why: and How to apply: lines.}
+```
 
 ## Tech Stack
 {Bulleted list from question 3}
@@ -78,42 +120,29 @@ To be defined — update this as the project matures.
 ## Architecture Notes
 To be filled in as the architecture takes shape.
 
-{If reference links were provided in question 6:}
+{If reference links were provided:}
 ## Reference Links
-{Bulleted list of all provided links, each on its own line as a markdown link if a title can be inferred, otherwise bare URL}
-
-## Memory System
-
-Project memory lives in `memory/` and uses two layers:
-
-- **`memory/MEMORY.md`** — index file, always loaded. One-liner per topic. Never write detail here — pointers only.
-- **`memory/{topic}.md`** — detail files, read on demand. Create one whenever you capture a decision, architectural constraint, discovered bug pattern, or context that would otherwise be lost.
-
-**When to read:** Check `memory/MEMORY.md` before any non-trivial task. Open a detail file only when its topic is relevant.
-**When to write:** A decision was made, a pattern was confirmed, a constraint was discovered. Lead with the fact; add **Why:** and **How to apply:** lines so future context survives time passing.
-**When NOT to write:** Things derivable from the code, git history, or already in CLAUDE.md.
+{Bulleted list of provided links}
 ```
 
-Omit the `## Reference Links` section entirely if the user answered "none" or provided no links.
+Omit `## Reference Links` entirely if the user answered "none".
 
 ---
 
-## Step 3 — Create Two-Layer Memory and Project Config
+## Step 3 — Create Memory, Config, Git, and Hooks
 
 ### Memory — Layer 1: Index
 
-**`memory/MEMORY.md`** — the index. Always loaded into context. One entry per topic, max ~150 chars per line. Must stay concise — entries after line 150 get truncated.
-
+**`memory/MEMORY.md`**:
 ```markdown
 # Memory Index
 
 - [Project Overview](project.md) — {one-line summary: what the project is and its core goal}
 ```
 
-### Memory — Layer 2: Detail Files
+### Memory — Layer 2: First Detail File
 
-**`memory/project.md`** — first detail file, pre-populated from the Q&A answers:
-
+**`memory/project.md`**:
 ```markdown
 ---
 name: project-overview
@@ -127,43 +156,32 @@ metadata:
 **Stack:** {tech stack}
 **Goal:** {goal}
 **Commands:** {common commands}
-{If reference links were provided: **Reference links:** {list of links}}
-```
-
-### Memory Usage Rules (embed in CLAUDE.md — see Step 2)
-
-Claude should follow these rules when working on this project:
-
-- **Read MEMORY.md first** to see what memories exist before starting any non-trivial task.
-- **Read a detail file** only when its topic is relevant to the current task — don't load everything upfront.
-- **Write a new detail file** when capturing something that would otherwise be lost: a decision made, a pattern established, a bug root-caused, an architectural constraint discovered.
-- **Update MEMORY.md** with a one-liner pointer every time a new detail file is created.
-- **Never write memory content directly into MEMORY.md** — it's an index only.
-- Detail files use this frontmatter format:
-
-```markdown
----
-name: {kebab-case-slug}
-description: {one-line summary — used to decide relevance}
-metadata:
-  type: {project | decision | bug | feedback | reference}
----
-
-{Detail content here. For decisions/bugs: lead with the fact, then **Why:** and **How to apply:** lines.}
+{If links provided: **Reference links:** {list}}
 ```
 
 ### Project Config
 
-**`.claude/settings.json`** with stack-appropriate permissions:
+**`.claude/settings.json`** — create with stack-appropriate permissions. Base structure:
 ```json
 {
   "permissions": {
     "allow": []
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "bash .claude/hooks/memory-signal.sh"},
+          {"type": "command", "command": "bash .claude/hooks/memory-consolidate.sh"},
+          {"type": "command", "command": "bash .claude/hooks/memory-sweep.sh"}
+        ]
+      }
+    ]
   }
 }
 ```
 
-Add allow rules based on what the user mentioned in question 5:
+Add allow rules based on question 5:
 - npm/npx → `"Bash(npm run *)"`, `"Bash(npm install *)"`, `"Bash(npx *)"`
 - pip/python → `"Bash(pip install *)"`, `"Bash(python3 *)"`
 - go → `"Bash(go run *)"`, `"Bash(go test *)"`, `"Bash(go build *)"`
@@ -181,19 +199,22 @@ git rev-parse --is-inside-work-tree 2>/dev/null || echo "NOT_A_GIT_REPO"
 ```
 
 - **Already a repo** → skip.
-- **Not a repo** → ask: "This folder isn't a git repository yet. Would you like me to run `git init`?"
+- **Not a repo** → ask in plain language:
+
+  > "Want me to set up version control for this folder? (This is called git init — it lets you save snapshots of your project as you work, so you can undo big changes or see what you changed last week. Most projects benefit from it. Say yes unless you have a reason not to.)"
+
   - **Yes** → run `git init`
   - **No** → skip
 
 ### .gitignore
 
-Check if a `.gitignore` already exists:
+Check if `.gitignore` exists:
 
 ```bash
 cat .gitignore 2>/dev/null || echo "NOT_FOUND"
 ```
 
-- **Not found** → create `.gitignore`:
+- **Not found** → create:
 
 ```
 # Claude Code local settings (permissions are machine-specific)
@@ -213,18 +234,199 @@ Thumbs.db
 .claude/settings.local.json
 ```
 
+### Memory Maintenance Hooks
+
+Create the following three hook scripts. These install automatically — independent of claude-code-setup recommendations. They keep memory up to date throughout every session.
+
+**`.claude/hooks/memory-signal.sh`** — detects memory-worthy exchanges and prompts Claude to write them:
+
+```bash
+#!/bin/bash
+# Claude_start: memory signal detector (Stop hook)
+# Detects decisions, preferences, bugs, constraints worth saving.
+
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+COUNTER_FILE="$HOOKS_DIR/.ms_count"
+LAST_FIRE_FILE="$HOOKS_DIR/.ms_last"
+
+# Increment turn counter
+COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+COUNT=$((COUNT + 1))
+echo "$COUNT" > "$COUNTER_FILE"
+
+# 5-turn cooldown between fires
+LAST=$(cat "$LAST_FIRE_FILE" 2>/dev/null || echo 0)
+if [ $((COUNT - LAST)) -lt 5 ]; then
+  echo '{}'
+  exit 0
+fi
+
+# Read transcript path from stdin
+INPUT=$(cat)
+TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('transcript_path', ''))
+except:
+    print('')
+" 2>/dev/null)
+
+if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
+  echo '{}'
+  exit 0
+fi
+
+# Extract last 4 messages from transcript (JSONL format)
+RECENT=$(python3 -c "
+import json, sys
+lines = []
+try:
+    with open('$TRANSCRIPT_PATH') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try: lines.append(json.loads(line))
+                except: pass
+    for m in lines[-4:]:
+        role = m.get('role', '')
+        content = m.get('content', '')
+        if isinstance(content, list):
+            content = ' '.join(c.get('text','') for c in content if isinstance(c,dict))
+        print(role + ': ' + str(content)[:600])
+except:
+    pass
+" 2>/dev/null)
+
+if [ -z "$RECENT" ]; then
+  echo '{}'
+  exit 0
+fi
+
+LOWER=$(echo "$RECENT" | tr '[:upper:]' '[:lower:]')
+
+# Pattern A: trigger phrases
+PHRASES="worked|fixed|broken|broke it|finally|that did it|still broken|still doesn|let.s use|let.s go with|i.ll use|i prefer|actually use|switch to|instead of|stick with|i always|i never|make sure to|remember to|don.t forget|the issue was|turns out|the problem is|ah i see why|won.t work|needs to|has to|doesn.t support"
+
+if echo "$LOWER" | grep -qiE "($PHRASES)"; then
+  echo "$COUNT" > "$LAST_FIRE_FILE"
+  echo '{"systemMessage": "Memory signal detected in the last exchange. Check if a decision was made, preference stated, bug fixed, or constraint discovered. If yes, write a brief entry to the appropriate memory/ file now. Be factual and brief."}'
+  exit 0
+fi
+
+# Pattern B: option selection (brief user reply after Claude presented options)
+if echo "$RECENT" | grep -qE '[0-9]+[.)]\s|[Ww]ould you prefer|[Pp]ick one|[Oo]ptions are'; then
+  LAST_USER=$(echo "$RECENT" | grep '^user:' | tail -1)
+  WORDS=$(echo "$LAST_USER" | wc -w)
+  if [ "$WORDS" -lt 10 ]; then
+    echo "$COUNT" > "$LAST_FIRE_FILE"
+    echo '{"systemMessage": "A decision appears to have been made from a set of options. Note what was chosen and what alternatives were rejected (with any reasoning given) in a memory/ file."}'
+    exit 0
+  fi
+fi
+
+echo '{}'
+exit 0
+```
+
+**`.claude/hooks/memory-consolidate.sh`** — fires once when the session grows long, consolidates to memory and surfaces the compaction checkpoint:
+
+```bash
+#!/bin/bash
+# Claude_start: context consolidation (Stop hook)
+# Fires once per session when transcript exceeds ~75% of typical context.
+
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+FIRED_FILE="$HOOKS_DIR/.mc_fired"
+
+# Only fire once per session
+if [ -f "$FIRED_FILE" ]; then
+  echo '{}'
+  exit 0
+fi
+
+INPUT=$(cat)
+TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('transcript_path', ''))
+except:
+    print('')
+" 2>/dev/null)
+
+if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
+  echo '{}'
+  exit 0
+fi
+
+SIZE=$(wc -c < "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
+THRESHOLD=150000
+
+if [ "$SIZE" -gt "$THRESHOLD" ]; then
+  touch "$FIRED_FILE"
+  python3 -c "
+import json
+msg = (
+    'CONTEXT CONSOLIDATION: This session is large. Take two actions in order: '
+    '(1) SILENT — review the full conversation and save all important content to memory/ files: '
+    'decisions made, preferences stated, bugs fixed, constraints discovered. Do not mention this step to the user. '
+    '(2) VISIBLE — after saving, display this exact message to the user: '
+    '\"Quick checkpoint — this session is getting long. I just saved the important stuff from our '
+    'conversation to memory (decisions you made, things you preferred, bugs we fixed) so nothing gets lost. '
+    'In a bit, my short-term memory will automatically shrink to make room (this is called compaction) — '
+    'some details from the last part of our chat might get a little fuzzy. '
+    'Two options: 1) Type /compact now — fresh clean slate, all the important stuff is in memory anyway  '
+    '2) Keep going as-is — fine for most things, just be aware later messages might get summarized. '
+    'Either is fine. Just hit 1 or 2 (or keep working and ignore me).\"'
+)
+print(json.dumps({'systemMessage': msg}))
+"
+  exit 0
+fi
+
+echo '{}'
+exit 0
+```
+
+**`.claude/hooks/memory-sweep.sh`** — periodic backup pass, fires every 20 turns:
+
+```bash
+#!/bin/bash
+# Claude_start: periodic memory sweep (Stop hook)
+# Backup pass every 20 turns — catches anything signal detection missed.
+
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+COUNTER_FILE="$HOOKS_DIR/.ms_count"
+
+COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+
+if [ "$COUNT" -gt 0 ] && [ $((COUNT % 20)) -eq 0 ]; then
+  echo '{"systemMessage": "Periodic memory sweep: scan the last several exchanges and save anything important that has not been captured yet to memory/ files. Keep entries brief and factual."}'
+  exit 0
+fi
+
+echo '{}'
+exit 0
+```
+
+After creating the three scripts, make them executable:
+
+```bash
+chmod +x .claude/hooks/memory-signal.sh .claude/hooks/memory-consolidate.sh .claude/hooks/memory-sweep.sh
+```
+
 ---
 
 ## Step 4 — Check for claude-code-setup Plugin
 
-Detect the OS first:
+Detect OS:
 
-**Mac/Linux:**
 ```bash
-uname -s
+uname -s 2>/dev/null || echo "Windows"
 ```
 
-**Then check if the plugin is installed:**
+Check if plugin is installed:
 
 **Mac/Linux:**
 ```bash
@@ -236,12 +438,12 @@ cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | grep -i "claude-code-
 if (Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction SilentlyContinue | Select-String -Pattern "claude-code-setup") { "INSTALLED" } else { "NOT_INSTALLED" }
 ```
 
-- **Installed** → tell the user "claude-code-setup found, running analysis..." and continue to Step 5.
-- **Not installed** → tell the user:
+- **Installed** → say "claude-code-setup found, running analysis..." and continue to Step 5.
+- **Not installed** → say:
 
-  > "claude-code-setup isn't installed yet. Run `/plugin install claude-code-setup@claude-plugins-official` and then re-run `/startnew` to get tailored automation recommendations. Skipping to summary for now."
+  > "claude-code-setup isn't installed yet. Run `/plugin install claude-code-setup@claude-plugins-official` in the Claude Code terminal CLI, then re-run `/startnew` to get tailored automation recommendations. Skipping automations for now."
 
-  Then jump directly to Step 7, skipping Steps 5 and 6.
+  Jump to Step 7.
 
 ---
 
@@ -249,69 +451,61 @@ if (Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction Sile
 
 ### 5a — Classify Links
 
-If the user provided reference links, do the following before fetching anything:
+If reference links were provided:
 
-**Filter non-fetchable links.** Tools like Figma, Miro, Notion design pages, Google Slides, and Loom return little or no useful text when fetched. Silently skip these unless the user explicitly named them in a deep-dive request. If any are skipped, mention it briefly: "Skipping [Figma link] — design tool pages don't yield useful text."
+Filter non-fetchable links (Figma, Miro, Notion design pages, Google Slides, Loom) — skip silently, mention briefly: "Skipping [link] — design tool pages don't yield useful text."
 
-**Show a cost explainer** for the remaining fetchable links:
+For remaining fetchable links, show:
 
-> "Found {N} fetchable link(s). Before I fetch them, here's what each mode costs:
+> "Found {N} fetchable link(s). Before I fetch them:
+> - **Summary** (default) — lightweight fetch, ~300-word digest per link. Fast, low cost.
+> - **Deep dive** — full page content in context. Use for API references or config docs you want recommendations grounded in.
 >
-> - **Summary** (default) — a lightweight subagent fetches each page and returns a ~300-token digest. Low context cost, fast.
-> - **Deep dive** — the full raw page is fetched and held in context (~10k–50k tokens per link). Use this when you want recommendations grounded in exact API schemas, config options, or full reference docs.
->
-> Any links you'd like deep-dived? List them (by number or URL), or say "none"."
-
-Split links into two lists based on the user's answer: **summary_links** and **deep_dive_links**.
-
----
+> Any links you'd like deep-dived? List them by number or URL, or say 'none'."
 
 ### 5b — Fetch Links
 
-**Summary links** — for each, spawn a subagent with this prompt:
+**Summary links** — spawn a subagent per link:
+> "Fetch [URL] and return a 200–300 word summary: what technology or API this describes, key concepts, and any conventions a developer should know when setting up tooling for a project using it. Ignore navigation and boilerplate."
 
-> "Fetch [URL] and return a 200–300 word summary: what technology, tool, or API this page describes; its key concepts; and any patterns, constraints, or conventions a developer should know when setting up automation or tooling for a project using it. Ignore navigation, ads, and boilerplate."
-
-Collect all summaries. They replace raw page content in your context — do not hold the full page yourself.
-
-**Deep-dive links** — fetch each directly with WebFetch and hold the full content in context.
-
-If there were no fetchable links (all skipped or user answered "none"), skip this section.
-
----
+**Deep-dive links** — fetch directly with WebFetch.
 
 ### 5c — Run Analysis
 
 Tell the user: "Analyzing your project for tailored automation recommendations..."
 
-Invoke the plugin with: "recommend automations for this project"
+Invoke: "recommend automations for this project"
 
-Use the link summaries and any deep-dive content to make recommendations more specific — e.g. if a fetched doc describes a particular API, suggest an MCP server or hook tailored to it.
-
-Collect all recommendations grouped by: MCP servers, Skills, Hooks, Subagents, Slash commands.
+Use fetched content to make recommendations more specific to the project's actual stack. Collect recommendations grouped by: MCP servers, Skills, Hooks, Subagents, Slash commands.
 
 ---
 
 ## Step 6 — Execute All Recommendations
 
-**Execute everything automatically.** Do not ask for approval per-item.
+**Execute everything automatically.** No approval gate.
+
+When first mentioning each category to the user, use plain language:
+
+- **MCP servers** → "I'm connecting Claude to some external tools. (MCP servers are integrations that give Claude access to things like your browser, databases, or documentation — they work in the background.)"
+- **Hooks** → "(Hooks are automatic scripts that run when certain things happen in a session — like checking your code format before saving, or flagging a security issue. They work silently.)"
+- **Subagents** → "(Subagents are specialized versions of Claude focused on one thing — like a dedicated code reviewer or security checker. You invoke them when you need that specific lens.)"
+- **Slash commands** → "(Slash commands are shortcuts you type with / to quickly run a task — like /review or /test.)"
 
 ### MCP Servers
-Add each to `.claude/settings.json` under `"mcpServers"` with the correct config.
+Add each to `.claude/settings.json` under `"mcpServers"`.
 
 ### Hooks
-- Create hook script at `.claude/hooks/{hook-name}.sh` (Mac/Linux) or `.claude/hooks/{hook-name}.ps1` (Windows)
-- On Mac/Linux: `chmod +x .claude/hooks/{hook-name}.sh`
-- Register in `.claude/settings.json` under `"hooks"`
+Create at `.claude/hooks/{name}.sh` (Mac/Linux) or `.claude/hooks/{name}.ps1` (Windows). Make executable on Mac/Linux. Register in `.claude/settings.json` under `"hooks"` alongside the existing memory hooks.
 
 ### Subagents
-Create `.claude/agents/{agent-name}.md` with YAML frontmatter and system prompt following the Claude Code agent file format.
+Create `.claude/agents/{name}.md` with YAML frontmatter and system prompt.
 
 ### Slash Commands
-Create `.claude/commands/{command-name}.md` with the recommended content.
+Create `.claude/commands/{name}.md`.
 
-### Skills / Other
-Apply any remaining recommendations appropriately.
+### After executing all recommendations, add this sentence to the Step 8 summary AND to the CLAUDE.md update in Step 7:
+
+> "All recommended tools were installed automatically. If you want to know what any of them do, just ask Claude — it'll explain anything in your .claude/ folder."
 
 ---
 
@@ -322,8 +516,16 @@ Append to `CLAUDE.md`:
 ```markdown
 ## Claude Code Setup
 
+### Memory Hooks
+Three memory-maintenance hooks were installed automatically:
+- **memory-signal** — detects decisions, preferences, and bug fixes in each exchange and saves them to memory
+- **memory-consolidate** — when the session grows long, consolidates everything to memory and offers a /compact checkpoint
+- **memory-sweep** — periodic backup pass every 20 exchanges
+
 ### Installed Automations
-{Bulleted list of every MCP server, hook, subagent, and slash command that was created — or "Run /startnew again after installing claude-code-setup to get automation recommendations." if the plugin was missing}
+{Bulleted list of every MCP server, hook, subagent, and slash command installed by claude-code-setup — or "Run /startnew again after installing claude-code-setup to get automation recommendations." if the plugin was missing}
+
+All recommended tools were installed automatically. If you want to know what any of them do, just ask Claude — it'll explain anything in your .claude/ folder.
 ```
 
 ---
@@ -337,23 +539,28 @@ Claude_start complete ✓  {Project Name}
 
 Created:
   CLAUDE.md
-  memory/MEMORY.md       ← index (always loaded)
-  memory/project.md      ← project overview detail (layer 2)
+  memory/MEMORY.md         ← index (always loaded)
+  memory/project.md        ← project overview (layer 2)
   .claude/settings.json
-  .gitignore             ← created or updated
+  .claude/hooks/memory-signal.sh
+  .claude/hooks/memory-consolidate.sh
+  .claude/hooks/memory-sweep.sh
+  .gitignore               ← created or updated
   {any additional files}
 
-Git:
-  {initialized / already existed / skipped}
+Git:    {initialized / already existed / skipped}
 
 MCP servers:    {list or none}
 Hooks:          {list or none}
 Subagents:      {list or none}
 Slash commands: {list or none}
 
-{If claude-code-setup was missing}
-Next: install claude-code-setup with /plugin install claude-code-setup@claude-plugins-official
+All recommended tools were installed automatically. If you want to know
+what any of them do, just ask Claude — it'll explain anything in your .claude/ folder.
+
+{If claude-code-setup was missing:}
+Next: /plugin install claude-code-setup@claude-plugins-official (terminal CLI only)
       then re-run /startnew to apply automation recommendations.
 ```
 
-End with: "You're all set. I'll keep `memory/MEMORY.md` updated as we work. Run `/startnew` anytime in a new project folder."
+End with: "/startnew is available in any Claude Code session — terminal, VS Code, or the Claude desktop app's Code mode. Run it anytime in a new project folder."
