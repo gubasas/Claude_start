@@ -127,6 +127,20 @@ Appends a `## Claude Code Setup` section to `CLAUDE.md` listing every automation
 
 ---
 
+## Updating
+
+To pull the latest version of `/startnew`:
+
+**Mac / Linux**
+```bash
+./update.sh
+```
+
+**Windows (PowerShell)**
+```powershell
+.\update.ps1
+```
+
 ## Re-running
 
 `/startnew` is safe to re-run. Use it to refresh automation recommendations after installing `claude-code-setup`, or in any new project folder.

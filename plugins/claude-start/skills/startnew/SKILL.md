@@ -172,6 +172,47 @@ Add allow rules based on what the user mentioned in question 5:
 
 Only add rules for tools the user actually mentioned.
 
+### Git Repository
+
+Check if the folder is already a git repo:
+
+```bash
+git rev-parse --is-inside-work-tree 2>/dev/null || echo "NOT_A_GIT_REPO"
+```
+
+- **Already a repo** → skip.
+- **Not a repo** → ask: "This folder isn't a git repository yet. Would you like me to run `git init`?"
+  - **Yes** → run `git init`
+  - **No** → skip
+
+### .gitignore
+
+Check if a `.gitignore` already exists:
+
+```bash
+cat .gitignore 2>/dev/null || echo "NOT_FOUND"
+```
+
+- **Not found** → create `.gitignore`:
+
+```
+# Claude Code local settings (permissions are machine-specific)
+.claude/settings.json
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+```
+
+- **Found** → check if `.claude/settings.json` is listed. If not, append:
+
+```
+# Claude Code local settings (permissions are machine-specific)
+.claude/settings.json
+.claude/settings.local.json
+```
+
 ---
 
 ## Step 4 — Check for claude-code-setup Plugin
@@ -299,7 +340,11 @@ Created:
   memory/MEMORY.md       ← index (always loaded)
   memory/project.md      ← project overview detail (layer 2)
   .claude/settings.json
+  .gitignore             ← created or updated
   {any additional files}
+
+Git:
+  {initialized / already existed / skipped}
 
 MCP servers:    {list or none}
 Hooks:          {list or none}

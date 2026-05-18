@@ -1,5 +1,6 @@
 {
   "name": "claude-start",
+  "version": "1.0.0",
   "description": "One-command project bootstrap for Claude Code. Creates CLAUDE.md, memory, MCP servers, hooks, subagents, and slash commands automatically.",
   "author": {
     "name": "Alex K",
