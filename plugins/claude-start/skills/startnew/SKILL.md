@@ -55,7 +55,7 @@ If user types `suggest`: based on context clues gathered so far (project name, a
 **Question 3 — Tech stack:**
 "What's the tech stack? Languages, frameworks, key libraries — rough is fine. Or type **suggest** and I'll propose one based on what you've told me — you can always add more later."
 
-If user types `suggest`: use project name and type to give one specific, opinionated stack recommendation with reasoning. Not a menu — one answer.
+If user types `suggest`: use project name and type to give one specific, opinionated stack recommendation with reasoning. Not a menu — one answer. Phrasing: "Based on what you've said, I'd suggest [X] because [Y]. Sound good, or want something different?"
 
 **Question 4 — Goal:**
 "In one or two sentences, what does this project accomplish or solve?"
@@ -63,7 +63,7 @@ If user types `suggest`: use project name and type to give one specific, opinion
 **Question 5 — Common commands:**
 "What shell commands will you run most? (e.g. `npm run dev`, `python app.py`, `make test`) — or type **suggest** and I'll propose typical ones for your stack."
 
-If user types `suggest`: propose the standard dev/test/build commands for their stack. One concrete set, not options.
+If user types `suggest`: propose the standard dev/test/build commands for their stack. One concrete set, not options. Phrasing: "Based on what you've said, I'd suggest [X] because [Y]. Sound good, or want something different?"
 
 **Question 6 — Reference links:**
 "Do you have any reference links to share? (docs, Figma, repos, API references — or 'none' to skip)"
