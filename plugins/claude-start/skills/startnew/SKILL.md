@@ -93,17 +93,7 @@ Project memory lives in `memory/` and uses two layers:
 **When to write:** A decision was made, a preference was stated, a bug was root-caused, a constraint was discovered. Lead with the fact; add **Why:** and **How to apply:** lines so context survives across sessions.
 **When NOT to write:** Things derivable from the code, git history, or already in CLAUDE.md.
 
-Detail file format:
-```markdown
----
-name: {kebab-case-slug}
-description: {one-line summary — used to decide relevance}
-metadata:
-  type: {project | decision | bug | feedback | reference}
----
-
-{Content here. For decisions/bugs: lead with the fact, then Why: and How to apply: lines.}
-```
+Detail files use YAML frontmatter with: name (kebab-case), description (one-line), metadata.type (project | decision | bug | feedback | reference). Body leads with the fact, then Why: and How to apply: lines for decisions and bugs.
 
 ## Tech Stack
 {Bulleted list from question 3}
