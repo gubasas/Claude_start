@@ -1,5 +1,5 @@
-# Claude_start installer
-# Installs /startnew globally and opens Claude Code to install the claude-code-setup plugin
+# Claude_start installer — safe to re-run at any time to update to the latest version
+# Installs /startnew and /startupdate globally, caches hook scripts, and checks the claude-code-setup plugin
 
 $CommandsDir = "$HOME\.claude\commands"
 $HooksCache = "$HOME\.claude\claude-start\hooks"

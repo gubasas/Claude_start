@@ -163,19 +163,21 @@ Hooks may not fire when using Claude Code inside the **Claude desktop app**. If 
 
 ## Updating
 
-To pull the latest version of `/startnew`:
+**The universal update path — works from any version:**
 
 **Mac / Linux**
 ```bash
-./update.sh
+git pull && ./install.sh
 ```
 
 **Windows (PowerShell)**
 ```powershell
-.\update.ps1
+git pull; .\install.ps1
 ```
 
-This updates the global `/startnew` command and refreshes the hook cache at `~/.claude/claude-start/hooks/`.
+`install.sh` is safe to re-run. It updates `/startnew`, `/startupdate`, and the hook cache — regardless of what version you had before.
+
+> If you have a recent version already installed, `./update.sh` (or `.\update.ps1`) does the same thing without re-checking the Claude Code setup steps.
 
 **To also update hooks in an existing project**, open that project in Claude Code and run:
 
