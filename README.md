@@ -82,7 +82,7 @@ Creates a `memory/` folder with two layers:
 - **`memory/MEMORY.md`** — the index. Always loaded into context. One-liner per topic, pointers only — never detail. Stays concise so it never gets truncated.
 - **`memory/project.md`** — the first detail file, pre-populated with everything from the intake. Future detail files are created as the project evolves (decisions made, bugs root-caused, patterns established, constraints discovered).
 
-Also creates **`.claude/settings.json`** with stack-appropriate permissions, and installs three memory-maintenance hooks automatically (see below).
+Also creates **`.claude/settings.json`** with stack-appropriate permissions, and installs two memory-maintenance hooks automatically (see below).
 
 ### Step 4 — Plugin check
 
@@ -103,7 +103,7 @@ Three memory-maintenance hooks are always installed regardless of `claude-code-s
 
 | Category | What gets created |
 |---|---|
-| **MCP servers** | Added to `.claude/settings.json` under `"mcpServers"` |
+| **MCP servers** | Added to `.mcp.json` at the project root |
 | **Hooks** | Script created at `.claude/hooks/` (`.sh` on Mac/Linux, `.ps1` on Windows), registered in settings |
 | **Subagents** | Agent file created at `.claude/agents/{name}.md` with YAML frontmatter |
 | **Slash commands** | Command file created at `.claude/commands/{name}.md` |
@@ -118,19 +118,24 @@ Appends a `## Claude Code Setup` section to `CLAUDE.md` listing every automation
 
 ## Memory hooks — always installed
 
-These three hooks are installed in every project by `/startnew`, independent of `claude-code-setup`:
+These two hooks are installed in every project by `/startnew`, independent of `claude-code-setup`:
 
 | Hook | When it fires | What it does |
 |---|---|---|
 | `memory-signal.sh` | After each Claude response | Scans for trigger phrases (decisions, fixes, preferences) and prompts Claude to write a memory entry |
-| `memory-consolidate.sh` | Once, when the session grows long (~75% context) | Silently consolidates the session to memory files, then shows a checkpoint message offering `/compact` or keep-going |
-| `memory-sweep.sh` | Every 20 exchanges | Periodic backup pass — catches anything signal detection missed |
+| `memory-consolidate.sh` | Once, when the session grows long (~90% context) | Silently consolidates the session to memory files, then shows a checkpoint message offering `/compact` or keep-going |
 
 **The checkpoint message** (from `memory-consolidate`) looks like this when it fires:
 
 > "Quick checkpoint — this session is getting long. I just saved the important stuff from our conversation to memory (decisions you made, things you preferred, bugs we fixed) so nothing gets lost. In a bit, my short-term memory will automatically shrink to make room (this is called compaction). Two options: 1) Type `/compact` now — fresh clean slate, all the important stuff is in memory anyway. 2) Keep going as-is. Just hit 1 or 2."
 
 This is normal — it means the memory system is working.
+
+### Desktop app and hooks
+
+Hooks may not fire when using Claude Code inside the **Claude desktop app**. If that's your environment and you chose **perfect recall** mode during setup, Claude will still follow the memory instructions baked into `CLAUDE.md` — writing entries proactively without the hook prompts. The **before-compact only** mode is unaffected either way.
+
+> **Note:** Desktop app hook behavior hasn't been exhaustively tested across all versions. If you notice hooks firing or not firing differently, please open an issue.
 
 ---
 
@@ -139,16 +144,16 @@ This is normal — it means the memory system is working.
 ```
 {project-root}/
   CLAUDE.md                               ← tailored project context for Claude
+  .mcp.json                               ← MCP server config (project-scoped)
   .gitignore                              ← created or updated
   memory/
     MEMORY.md                             ← memory index (always loaded)
     project.md                            ← project overview detail file
   .claude/
-    settings.json                         ← permissions + MCP server config + hook registration
+    settings.json                         ← permissions + hook registration
     hooks/
       memory-signal.sh                    ← always installed (decision/fix/preference detection)
-      memory-consolidate.sh               ← always installed (~75% context checkpoint)
-      memory-sweep.sh                     ← always installed (periodic backup)
+      memory-consolidate.sh               ← always installed (~90% context checkpoint)
       {other-hooks}.sh                    ← from claude-code-setup recommendations (if any)
     agents/{agent-name}.md                ← subagent definitions (if recommended)
     commands/{command-name}.md            ← slash commands (if recommended)
@@ -169,6 +174,8 @@ To pull the latest version of `/startnew`:
 ```powershell
 .\update.ps1
 ```
+
+This updates the global `/startnew` command. **Per-project hooks** (`.claude/hooks/memory-signal.sh`, etc.) in existing projects are not updated automatically — see [OPEN_ISSUES.md](OPEN_ISSUES.md) for the planned `/startupdate` command.
 
 ## Re-running
 

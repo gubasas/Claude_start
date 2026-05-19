@@ -74,7 +74,7 @@ Confirm answers back briefly and continue — note "let me know if you want to a
 
 ## Step 2 — Write CLAUDE.md
 
-Write `CLAUDE.md` in the current working directory. **Memory System goes directly after Project Overview — before Tech Stack.** This ordering is intentional: behavioral rules carry more attention weight near the top.
+Write `CLAUDE.md` in the current working directory in this exact section order. **Do not reorder sections.** The Memory System section MUST come directly after Project Overview and before Tech Stack — this is intentional, not optional.
 
 ```markdown
 # {Project Name}
@@ -149,9 +149,25 @@ metadata:
 {If links provided: **Reference links:** {list}}
 ```
 
+### Memory Mode
+
+Before creating any hook files, ask the user:
+
+> "One quick choice — how should I handle memory during sessions?
+>
+> **1 — Perfect recall**: I scan every exchange for decisions, preferences, and bug fixes and write them to memory as they happen. When I detect something worth saving I'll briefly pause to write a note — roughly 100–200 extra tokens, maybe 5–10 times per session. I also do a full save automatically at 90% context before you'd ever need to compact.
+>
+> **2 — Before-compact only**: I only save memory when the session is nearly full (90% context), right before you'd need to compact. Zero overhead during normal work — nothing interrupts you mid-session.
+>
+> Type 1 or 2."
+
+Store the answer as **MEMORY_MODE**. Use it throughout Step 3 to decide which hooks to create and register.
+
 ### Project Config
 
-**`.claude/settings.json`** — create with stack-appropriate permissions. Base structure:
+**`.claude/settings.json`** — create with stack-appropriate permissions.
+
+**If MEMORY_MODE = 1 (perfect recall):**
 ```json
 {
   "permissions": {
@@ -161,9 +177,26 @@ metadata:
     "Stop": [
       {
         "hooks": [
-          {"type": "command", "command": "bash .claude/hooks/memory-signal.sh"},
-          {"type": "command", "command": "bash .claude/hooks/memory-consolidate.sh"},
-          {"type": "command", "command": "bash .claude/hooks/memory-sweep.sh"}
+          {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.sh", "args": []},
+          {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
+        ]
+      }
+    ]
+  }
+}
+```
+
+**If MEMORY_MODE = 2 (before-compact only):**
+```json
+{
+  "permissions": {
+    "allow": []
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
         ]
       }
     ]
@@ -204,7 +237,7 @@ Check if `.gitignore` exists:
 cat .gitignore 2>/dev/null || echo "NOT_FOUND"
 ```
 
-- **Not found** → create:
+- **Not found** → tell the user: "Also creating a .gitignore — this tells version control which files to ignore (like machine-specific settings that are specific to your computer and shouldn't be shared). You can leave it as-is." Then create:
 
 ```
 # Claude Code local settings (permissions are machine-specific)
@@ -226,16 +259,16 @@ Thumbs.db
 
 ### Memory Maintenance Hooks
 
-Create the following three hook scripts. These install automatically — independent of claude-code-setup recommendations. They keep memory up to date throughout every session.
+**If MEMORY_MODE = 1**, create both scripts below. **If MEMORY_MODE = 2**, create only `memory-consolidate.sh` and skip `memory-signal.sh`.
 
-**`.claude/hooks/memory-signal.sh`** — detects memory-worthy exchanges and prompts Claude to write them:
+**`.claude/hooks/memory-signal.sh`** *(perfect recall only)* — detects memory-worthy exchanges and prompts Claude to write them:
 
 ```bash
 #!/bin/bash
 # Claude_start: memory signal detector (Stop hook)
 # Detects decisions, preferences, bugs, constraints worth saving.
 
-HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOOKS_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
 COUNTER_FILE="$HOOKS_DIR/.ms_count"
 LAST_FIRE_FILE="$HOOKS_DIR/.ms_last"
 
@@ -244,14 +277,7 @@ COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
 COUNT=$((COUNT + 1))
 echo "$COUNT" > "$COUNTER_FILE"
 
-# 5-turn cooldown between fires
-LAST=$(cat "$LAST_FIRE_FILE" 2>/dev/null || echo 0)
-if [ $((COUNT - LAST)) -lt 5 ]; then
-  echo '{}'
-  exit 0
-fi
-
-# Read transcript path from stdin
+# Read transcript path from stdin — check every turn
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "
 import sys, json
@@ -296,22 +322,28 @@ fi
 LOWER=$(echo "$RECENT" | tr '[:upper:]' '[:lower:]')
 
 # Pattern A: trigger phrases
-PHRASES="worked|fixed|broken|broke it|finally|that did it|still broken|still doesn|let.s use|let.s go with|i.ll use|i prefer|actually use|switch to|instead of|stick with|i always|i never|make sure to|remember to|don.t forget|the issue was|turns out|the problem is|ah i see why|won.t work|needs to|has to|doesn.t support"
+PHRASES="worked|didn.t work|fixed|broken|broke it|finally|that did it|still broken|still doesn|let.s use|let.s go with|we should use|i.ll use|i prefer|actually use|switch to|instead of|stick with|i always|i never|i hate|i love|i want|i don.t want|make sure to|remember to|don.t forget|the issue was|turns out|the problem is|ah i see why|won.t work|needs to|has to|doesn.t support"
 
 if echo "$LOWER" | grep -qiE "($PHRASES)"; then
-  echo "$COUNT" > "$LAST_FIRE_FILE"
-  echo '{"systemMessage": "Memory signal detected in the last exchange. Check if a decision was made, preference stated, bug fixed, or constraint discovered. If yes, write a brief entry to the appropriate memory/ file now. Be factual and brief."}'
-  exit 0
+  LAST=$(cat "$LAST_FIRE_FILE" 2>/dev/null || echo 0)
+  if [ $((COUNT - LAST)) -ge 5 ]; then
+    echo "$COUNT" > "$LAST_FIRE_FILE"
+    echo '{"decision": "block", "reason": "Memory signal detected. Review the last several exchanges (back to the most recent memory write, or the start of the session if none) for any decision made, preference stated, bug fixed, or constraint discovered. If yes, write a brief entry to the appropriate memory/ file and confirm with one line. Be factual and brief."}'
+    exit 0
+  fi
 fi
 
 # Pattern B: option selection (brief user reply after Claude presented options)
-if echo "$RECENT" | grep -qE '[0-9]+[.)]\s|[Ww]ould you prefer|[Pp]ick one|[Oo]ptions are'; then
+if echo "$RECENT" | grep -qE '[0-9]+[.)]\s|[a-zA-Z][.)]\s|^\s*[-–—*•]\s|[Ww]ould you prefer|[Pp]ick one|[Oo]ptions are|[Cc]hoose one|[Ww]hich would'; then
   LAST_USER=$(echo "$RECENT" | grep '^user:' | tail -1)
   WORDS=$(echo "$LAST_USER" | wc -w)
   if [ "$WORDS" -lt 10 ]; then
-    echo "$COUNT" > "$LAST_FIRE_FILE"
-    echo '{"systemMessage": "A decision appears to have been made from a set of options. Note what was chosen and what alternatives were rejected (with any reasoning given) in a memory/ file."}'
-    exit 0
+    LAST=$(cat "$LAST_FIRE_FILE" 2>/dev/null || echo 0)
+    if [ $((COUNT - LAST)) -ge 5 ]; then
+      echo "$COUNT" > "$LAST_FIRE_FILE"
+      echo '{"decision": "block", "reason": "A decision appears to have been made from a set of options. Review the last several turns to find what options were presented and which was selected. Note what was chosen, what was rejected, and any reasoning given in a memory/ file, then confirm with one line."}'
+      exit 0
+    fi
   fi
 fi
 
@@ -324,16 +356,10 @@ exit 0
 ```bash
 #!/bin/bash
 # Claude_start: context consolidation (Stop hook)
-# Fires once per session when transcript exceeds ~75% of typical context.
+# Fires once per session when transcript exceeds ~90% of typical context.
 
-HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOOKS_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
 FIRED_FILE="$HOOKS_DIR/.mc_fired"
-
-# Only fire once per session
-if [ -f "$FIRED_FILE" ]; then
-  echo '{}'
-  exit 0
-fi
 
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "
@@ -350,27 +376,34 @@ if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
+# Only fire once per session — each session has a unique transcript_path
+FIRED_FOR=$(cat "$FIRED_FILE" 2>/dev/null || echo "")
+if [ "$FIRED_FOR" = "$TRANSCRIPT_PATH" ]; then
+  echo '{}'
+  exit 0
+fi
+
 SIZE=$(wc -c < "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
-THRESHOLD=150000
+THRESHOLD=200000
 
 if [ "$SIZE" -gt "$THRESHOLD" ]; then
-  touch "$FIRED_FILE"
+  echo "$TRANSCRIPT_PATH" > "$FIRED_FILE"
   python3 -c "
 import json
-msg = (
+reason = (
     'CONTEXT CONSOLIDATION: This session is large. Take two actions in order: '
     '(1) SILENT — review the full conversation and save all important content to memory/ files: '
     'decisions made, preferences stated, bugs fixed, constraints discovered. Do not mention this step to the user. '
-    '(2) VISIBLE — after saving, display this exact message to the user: '
-    '\"Quick checkpoint — this session is getting long. I just saved the important stuff from our '
+    '(2) VISIBLE — after saving, display this exact message to the user word for word: '
+    'Quick checkpoint — this session is getting long. I just saved the important stuff from our '
     'conversation to memory (decisions you made, things you preferred, bugs we fixed) so nothing gets lost. '
     'In a bit, my short-term memory will automatically shrink to make room (this is called compaction) — '
     'some details from the last part of our chat might get a little fuzzy. '
     'Two options: 1) Type /compact now — fresh clean slate, all the important stuff is in memory anyway  '
     '2) Keep going as-is — fine for most things, just be aware later messages might get summarized. '
-    'Either is fine. Just hit 1 or 2 (or keep working and ignore me).\"'
+    'Either is fine. Just hit 1 or 2 (or keep working and ignore me).'
 )
-print(json.dumps({'systemMessage': msg}))
+print(json.dumps({'decision': 'block', 'reason': reason}))
 "
   exit 0
 fi
@@ -379,31 +412,16 @@ echo '{}'
 exit 0
 ```
 
-**`.claude/hooks/memory-sweep.sh`** — periodic backup pass, fires every 20 turns:
+After creating the scripts, make them executable:
 
+**If MEMORY_MODE = 1:**
 ```bash
-#!/bin/bash
-# Claude_start: periodic memory sweep (Stop hook)
-# Backup pass every 20 turns — catches anything signal detection missed.
-
-HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
-COUNTER_FILE="$HOOKS_DIR/.ms_count"
-
-COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
-
-if [ "$COUNT" -gt 0 ] && [ $((COUNT % 20)) -eq 0 ]; then
-  echo '{"systemMessage": "Periodic memory sweep: scan the last several exchanges and save anything important that has not been captured yet to memory/ files. Keep entries brief and factual."}'
-  exit 0
-fi
-
-echo '{}'
-exit 0
+chmod +x .claude/hooks/memory-signal.sh .claude/hooks/memory-consolidate.sh
 ```
 
-After creating the three scripts, make them executable:
-
+**If MEMORY_MODE = 2:**
 ```bash
-chmod +x .claude/hooks/memory-signal.sh .claude/hooks/memory-consolidate.sh .claude/hooks/memory-sweep.sh
+chmod +x .claude/hooks/memory-consolidate.sh
 ```
 
 ---
@@ -431,7 +449,7 @@ if (Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction Sile
 - **Installed** → say "claude-code-setup found, running analysis..." and continue to Step 5.
 - **Not installed** → say:
 
-  > "claude-code-setup isn't installed yet. Run `/plugin install claude-code-setup@claude-plugins-official` in the Claude Code terminal CLI, then re-run `/startnew` to get tailored automation recommendations. Skipping automations for now."
+  > "claude-code-setup isn't installed yet. Run `/plugin install claude-code-setup@claude-plugins-official` in the Claude Code terminal (the command-line version — not VS Code or the desktop app), then re-run `/startnew` to get tailored automation recommendations. Skipping automations for now."
 
   Jump to Step 7.
 
@@ -482,10 +500,19 @@ When first mentioning each category to the user, use plain language:
 - **Slash commands** → "(Slash commands are shortcuts you type with / to quickly run a task — like /review or /test.)"
 
 ### MCP Servers
-Add each to `.claude/settings.json` under `"mcpServers"`.
+**IMPORTANT: MCP servers go in `.mcp.json` at the project root. Never add `"mcpServers"` to `.claude/settings.json`.** Format:
+```json
+{
+  "mcpServers": {
+    "server-name": { "command": "...", "args": [...] }
+  }
+}
+```
 
 ### Hooks
-Create at `.claude/hooks/{name}.sh` (Mac/Linux) or `.claude/hooks/{name}.ps1` (Windows). Make executable on Mac/Linux. Register in `.claude/settings.json` under `"hooks"` alongside the existing memory hooks.
+Create at `.claude/hooks/{name}.sh` (Mac/Linux) or `.claude/hooks/{name}.ps1` (Windows). Make executable on Mac/Linux.
+
+**IMPORTANT: When registering hooks in `.claude/settings.json`, READ the existing file first, then ADD new hook entries to the existing `"hooks"` object. Never replace or overwrite the hooks section — the memory hooks from Step 3 must be preserved.** The correct approach is to add a new event key (e.g. `"PostToolUse"`) or add entries to an existing event array, leaving `"Stop"` and its memory hooks untouched.
 
 ### Subagents
 Create `.claude/agents/{name}.md` with YAML frontmatter and system prompt.
@@ -507,10 +534,12 @@ Append to `CLAUDE.md`:
 ## Claude Code Setup
 
 ### Memory Hooks
-Three memory-maintenance hooks were installed automatically:
-- **memory-signal** — detects decisions, preferences, and bug fixes in each exchange and saves them to memory
-- **memory-consolidate** — when the session grows long, consolidates everything to memory and offers a /compact checkpoint
-- **memory-sweep** — periodic backup pass every 20 exchanges
+{If MEMORY_MODE = 1: "Two memory-maintenance hooks were installed (perfect recall mode):
+- **memory-signal** — scans every exchange for decisions, preferences, and bug fixes; saves them as they happen (5-turn cooldown between writes)
+- **memory-consolidate** — full save at 90% context, then offers a /compact checkpoint"}
+
+{If MEMORY_MODE = 2: "One memory-maintenance hook was installed (before-compact only mode):
+- **memory-consolidate** — full save at 90% context, then offers a /compact checkpoint. No mid-session overhead."}
 
 ### Installed Automations
 {Bulleted list of every MCP server, hook, subagent, and slash command installed by claude-code-setup — or "Run /startnew again after installing claude-code-setup to get automation recommendations." if the plugin was missing}
@@ -531,10 +560,9 @@ Created:
   CLAUDE.md
   memory/MEMORY.md         ← index (always loaded)
   memory/project.md        ← project overview (layer 2)
-  .claude/settings.json
-  .claude/hooks/memory-signal.sh
+  .claude/settings.json          ← hidden folder where Claude stores settings and automations
   .claude/hooks/memory-consolidate.sh
-  .claude/hooks/memory-sweep.sh
+  {If MEMORY_MODE = 1: .claude/hooks/memory-signal.sh}
   .gitignore               ← created or updated
   {any additional files}
 
