@@ -39,6 +39,7 @@ New-Item -ItemType Directory -Force -Path $HooksCache | Out-Null
 Copy-Item "$HooksSrc\memory-signal.sh" "$HooksCache\memory-signal.sh" -Force
 Copy-Item "$HooksSrc\memory-consolidate.sh" "$HooksCache\memory-consolidate.sh" -Force
 Write-Host "v Hook scripts cached at ~/.claude/claude-start/hooks"
+Write-Host "  -> Run /startupdate in any existing project to refresh its hooks."
 
 # Check if claude-code-setup plugin is already installed
 $PluginInstalled = Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction SilentlyContinue |

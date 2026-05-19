@@ -44,6 +44,7 @@ cp "$HOOKS_SRC/memory-signal.sh" "$HOOKS_CACHE/memory-signal.sh"
 cp "$HOOKS_SRC/memory-consolidate.sh" "$HOOKS_CACHE/memory-consolidate.sh"
 chmod +x "$HOOKS_CACHE/memory-signal.sh" "$HOOKS_CACHE/memory-consolidate.sh"
 echo "✓ Hook scripts cached at ~/.claude/claude-start/hooks"
+echo "  → Run /startupdate in any existing project to refresh its hooks."
 
 # Check if claude-code-setup plugin is already installed
 PLUGIN_INSTALLED=$(cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | grep -i "claude-code-setup" || echo "")
