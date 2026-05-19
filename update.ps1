@@ -1,7 +1,8 @@
-# Claude_start updater — pulls latest changes and refreshes the global command
+# Claude_start updater — pulls latest changes and refreshes the global command and hook cache
 
 $CommandsDir = "$HOME\.claude\commands"
 $HooksCache = "$HOME\.claude\claude-start\hooks"
+$HooksSrc = Join-Path $PSScriptRoot "plugins\claude-start\hooks"
 $ScriptDir = $PSScriptRoot
 
 Write-Host ""
@@ -12,14 +13,21 @@ Write-Host "--------------------"
 Set-Location $ScriptDir
 git pull
 
-# Refresh global command
+# Refresh global commands
 Copy-Item "plugins\claude-start\skills\startnew\SKILL.md" "$CommandsDir\startnew.md" -Force
 Write-Host "v /startnew updated to latest version"
 
-# Cache hook scripts for future per-project updater
+$StartupdateSrc = Join-Path $PSScriptRoot "plugins\claude-start\skills\startupdate\SKILL.md"
+if (Test-Path $StartupdateSrc) {
+    Copy-Item $StartupdateSrc "$CommandsDir\startupdate.md" -Force
+    Write-Host "v /startupdate updated to latest version"
+}
+
+# Refresh hook cache — /startupdate reads from here to patch existing projects
 New-Item -ItemType Directory -Force -Path $HooksCache | Out-Null
+Copy-Item "$HooksSrc\memory-signal.sh" "$HooksCache\memory-signal.sh" -Force
+Copy-Item "$HooksSrc\memory-consolidate.sh" "$HooksCache\memory-consolidate.sh" -Force
 Write-Host "v Hook cache refreshed at ~/.claude/claude-start/hooks"
 Write-Host ""
-Write-Host "Note: existing project hooks are NOT updated automatically."
-Write-Host "      Per-project hook updates are tracked in OPEN_ISSUES.md."
+Write-Host "Run /startupdate in any existing project to apply the latest hooks."
 Write-Host ""

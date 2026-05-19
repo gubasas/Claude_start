@@ -18,18 +18,9 @@ Known gaps and things to revisit. Add an entry when you find something; check it
 
 ---
 
-### 2. Per-project hook updater
+### ~~2. Per-project hook updater~~ ✓ RESOLVED *(2026-05-19)*
 
-**What we know:** `update.sh` refreshes the global `/startnew` command. It does not update hook scripts (`.claude/hooks/memory-signal.sh`, etc.) in existing projects.
-
-**Impact:** When memory hook logic improves, users with existing projects keep the old version. They'd have to manually copy files or re-run `/startnew`.
-
-**Next step:** Design a `/startupdate` slash command that re-writes the memory hooks in the current project with the latest canonical versions. Options:
-- Extract hook content from `~/.claude/commands/startnew.md` (SKILL.md) at update time
-- Store hooks as standalone files in the repo (e.g. `plugins/claude-start/hooks/`) and have `update.sh` also copy them to a known location (e.g. `~/.claude/claude-start/hooks/`), then `/startupdate` reads from there
-- The second option is cleaner and doesn't require parsing SKILL.md
-
-See also: `update.sh` needs to save the install path somewhere so per-project updaters can find the canonical hook files.
+Hook scripts are now standalone files at `plugins/claude-start/hooks/`. `install.sh` and `update.sh` cache them to `~/.claude/claude-start/hooks/`. A `/startupdate` slash command copies the latest cached versions into the current project's `.claude/hooks/` and verifies `settings.json` registration.
 
 ---
 
@@ -67,6 +58,7 @@ See also: `update.sh` needs to save the install path somewhere so per-project up
 
 ## Resolved
 
+- **Per-project hook updater** — `/startupdate` command added; hooks stored as standalone files in repo, cached to `~/.claude/claude-start/hooks/` by install/update scripts. *(2026-05-19)*
 - **Pattern B regex missing em-dash/en-dash** — `[-*•]` didn't match Claude's em-dash bullets. Fixed: changed to `[-–—*•]`. *(2026-05-19)*
 - **memory-signal.sh cooldown before detection** — hook exited early for 4 of every 5 turns before checking patterns. Fixed: cooldown now gates only the fire, not the detection. *(2026-05-19)*
 - **dirname bug in hook template** — nested `$(dirname "$0")` was dropped during SKILL.md template writes. Fixed: changed to `${BASH_SOURCE[0]%/*}`. *(2026-05-19)*

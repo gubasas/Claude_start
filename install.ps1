@@ -2,7 +2,9 @@
 # Installs /startnew globally and opens Claude Code to install the claude-code-setup plugin
 
 $CommandsDir = "$HOME\.claude\commands"
+$HooksCache = "$HOME\.claude\claude-start\hooks"
 $Source = Join-Path $PSScriptRoot "plugins\claude-start\skills\startnew\SKILL.md"
+$HooksSrc = Join-Path $PSScriptRoot "plugins\claude-start\hooks"
 
 Write-Host ""
 Write-Host "Claude_start installer"
@@ -24,6 +26,19 @@ if (-not (Test-Path "$HOME\.claude")) {
 New-Item -ItemType Directory -Force -Path $CommandsDir | Out-Null
 Copy-Item $Source "$CommandsDir\startnew.md" -Force
 Write-Host "v /startnew command installed"
+
+# Install the /startupdate command (if it exists)
+$StartupdateSrc = Join-Path $PSScriptRoot "plugins\claude-start\skills\startupdate\SKILL.md"
+if (Test-Path $StartupdateSrc) {
+    Copy-Item $StartupdateSrc "$CommandsDir\startupdate.md" -Force
+    Write-Host "v /startupdate command installed"
+}
+
+# Cache hook scripts so /startupdate can refresh existing projects
+New-Item -ItemType Directory -Force -Path $HooksCache | Out-Null
+Copy-Item "$HooksSrc\memory-signal.sh" "$HooksCache\memory-signal.sh" -Force
+Copy-Item "$HooksSrc\memory-consolidate.sh" "$HooksCache\memory-consolidate.sh" -Force
+Write-Host "v Hook scripts cached at ~/.claude/claude-start/hooks"
 
 # Check if claude-code-setup plugin is already installed
 $PluginInstalled = Get-Content "$HOME\.claude\plugins\installed_plugins.json" -ErrorAction SilentlyContinue |

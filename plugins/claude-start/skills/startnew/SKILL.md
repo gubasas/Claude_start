@@ -259,168 +259,20 @@ Thumbs.db
 
 ### Memory Maintenance Hooks
 
-**If MEMORY_MODE = 1**, create both scripts below. **If MEMORY_MODE = 2**, create only `memory-consolidate.sh` and skip `memory-signal.sh`.
-
-**`.claude/hooks/memory-signal.sh`** *(perfect recall only)* — detects memory-worthy exchanges and prompts Claude to write them:
-
-```bash
-#!/bin/bash
-# Claude_start: memory signal detector (Stop hook)
-# Detects decisions, preferences, bugs, constraints worth saving.
-
-HOOKS_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
-COUNTER_FILE="$HOOKS_DIR/.ms_count"
-LAST_FIRE_FILE="$HOOKS_DIR/.ms_last"
-
-# Increment turn counter
-COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
-COUNT=$((COUNT + 1))
-echo "$COUNT" > "$COUNTER_FILE"
-
-# Read transcript path from stdin — check every turn
-INPUT=$(cat)
-TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('transcript_path', ''))
-except:
-    print('')
-" 2>/dev/null)
-
-if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
-  echo '{}'
-  exit 0
-fi
-
-# Extract last 4 messages from transcript (JSONL format)
-RECENT=$(python3 -c "
-import json, sys
-lines = []
-try:
-    with open('$TRANSCRIPT_PATH') as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                try: lines.append(json.loads(line))
-                except: pass
-    for m in lines[-4:]:
-        role = m.get('role', '')
-        content = m.get('content', '')
-        if isinstance(content, list):
-            content = ' '.join(c.get('text','') for c in content if isinstance(c,dict))
-        print(role + ': ' + str(content)[:600])
-except:
-    pass
-" 2>/dev/null)
-
-if [ -z "$RECENT" ]; then
-  echo '{}'
-  exit 0
-fi
-
-LOWER=$(echo "$RECENT" | tr '[:upper:]' '[:lower:]')
-
-# Pattern A: trigger phrases
-PHRASES="worked|didn.t work|fixed|broken|broke it|finally|that did it|still broken|still doesn|let.s use|let.s go with|we should use|i.ll use|i prefer|actually use|switch to|instead of|stick with|i always|i never|i hate|i love|i want|i don.t want|make sure to|remember to|don.t forget|the issue was|turns out|the problem is|ah i see why|won.t work|needs to|has to|doesn.t support"
-
-if echo "$LOWER" | grep -qiE "($PHRASES)"; then
-  LAST=$(cat "$LAST_FIRE_FILE" 2>/dev/null || echo 0)
-  if [ $((COUNT - LAST)) -ge 5 ]; then
-    echo "$COUNT" > "$LAST_FIRE_FILE"
-    echo '{"decision": "block", "reason": "Memory signal detected. Review the last several exchanges (back to the most recent memory write, or the start of the session if none) for any decision made, preference stated, bug fixed, or constraint discovered. If yes, write a brief entry to the appropriate memory/ file and confirm with one line. Be factual and brief."}'
-    exit 0
-  fi
-fi
-
-# Pattern B: option selection (brief user reply after Claude presented options)
-if echo "$RECENT" | grep -qE '[0-9]+[.)]\s|[a-zA-Z][.)]\s|^\s*[-–—*•]\s|[Ww]ould you prefer|[Pp]ick one|[Oo]ptions are|[Cc]hoose one|[Ww]hich would'; then
-  LAST_USER=$(echo "$RECENT" | grep '^user:' | tail -1)
-  WORDS=$(echo "$LAST_USER" | wc -w)
-  if [ "$WORDS" -lt 10 ]; then
-    LAST=$(cat "$LAST_FIRE_FILE" 2>/dev/null || echo 0)
-    if [ $((COUNT - LAST)) -ge 5 ]; then
-      echo "$COUNT" > "$LAST_FIRE_FILE"
-      echo '{"decision": "block", "reason": "A decision appears to have been made from a set of options. Review the last several turns to find what options were presented and which was selected. Note what was chosen, what was rejected, and any reasoning given in a memory/ file, then confirm with one line."}'
-      exit 0
-    fi
-  fi
-fi
-
-echo '{}'
-exit 0
-```
-
-**`.claude/hooks/memory-consolidate.sh`** — fires once when the session grows long, consolidates to memory and surfaces the compaction checkpoint:
-
-```bash
-#!/bin/bash
-# Claude_start: context consolidation (Stop hook)
-# Fires once per session when transcript exceeds ~90% of typical context.
-
-HOOKS_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
-FIRED_FILE="$HOOKS_DIR/.mc_fired"
-
-INPUT=$(cat)
-TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('transcript_path', ''))
-except:
-    print('')
-" 2>/dev/null)
-
-if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
-  echo '{}'
-  exit 0
-fi
-
-# Only fire once per session — each session has a unique transcript_path
-FIRED_FOR=$(cat "$FIRED_FILE" 2>/dev/null || echo "")
-if [ "$FIRED_FOR" = "$TRANSCRIPT_PATH" ]; then
-  echo '{}'
-  exit 0
-fi
-
-SIZE=$(wc -c < "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
-THRESHOLD=200000
-
-if [ "$SIZE" -gt "$THRESHOLD" ]; then
-  echo "$TRANSCRIPT_PATH" > "$FIRED_FILE"
-  python3 -c "
-import json
-reason = (
-    'CONTEXT CONSOLIDATION: This session is large. Take two actions in order: '
-    '(1) SILENT — review the full conversation and save all important content to memory/ files: '
-    'decisions made, preferences stated, bugs fixed, constraints discovered. Do not mention this step to the user. '
-    '(2) VISIBLE — after saving, display this exact message to the user word for word: '
-    'Quick checkpoint — this session is getting long. I just saved the important stuff from our '
-    'conversation to memory (decisions you made, things you preferred, bugs we fixed) so nothing gets lost. '
-    'In a bit, my short-term memory will automatically shrink to make room (this is called compaction) — '
-    'some details from the last part of our chat might get a little fuzzy. '
-    'Two options: 1) Type /compact now — fresh clean slate, all the important stuff is in memory anyway  '
-    '2) Keep going as-is — fine for most things, just be aware later messages might get summarized. '
-    'Either is fine. Just hit 1 or 2 (or keep working and ignore me).'
-)
-print(json.dumps({'decision': 'block', 'reason': reason}))
-"
-  exit 0
-fi
-
-echo '{}'
-exit 0
-```
-
-After creating the scripts, make them executable:
+The hook scripts live in `~/.claude/claude-start/hooks/` (installed there by `install.sh` / `update.sh`). Copy them into the project — do not write the script content inline.
 
 **If MEMORY_MODE = 1:**
 ```bash
+mkdir -p .claude/hooks
+cp ~/.claude/claude-start/hooks/memory-signal.sh .claude/hooks/memory-signal.sh
+cp ~/.claude/claude-start/hooks/memory-consolidate.sh .claude/hooks/memory-consolidate.sh
 chmod +x .claude/hooks/memory-signal.sh .claude/hooks/memory-consolidate.sh
 ```
 
 **If MEMORY_MODE = 2:**
 ```bash
+mkdir -p .claude/hooks
+cp ~/.claude/claude-start/hooks/memory-consolidate.sh .claude/hooks/memory-consolidate.sh
 chmod +x .claude/hooks/memory-consolidate.sh
 ```
 

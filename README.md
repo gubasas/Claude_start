@@ -175,7 +175,15 @@ To pull the latest version of `/startnew`:
 .\update.ps1
 ```
 
-This updates the global `/startnew` command. **Per-project hooks** (`.claude/hooks/memory-signal.sh`, etc.) in existing projects are not updated automatically — see [OPEN_ISSUES.md](OPEN_ISSUES.md) for the planned `/startupdate` command.
+This updates the global `/startnew` command and refreshes the hook cache at `~/.claude/claude-start/hooks/`.
+
+**To also update hooks in an existing project**, open that project in Claude Code and run:
+
+```
+/startupdate
+```
+
+This copies the latest hook scripts from the cache into `.claude/hooks/` and verifies `settings.json` registration.
 
 ## Re-running
 

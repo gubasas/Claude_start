@@ -4,8 +4,11 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMANDS_DIR="$HOME/.claude/commands"
-SOURCE="$(dirname "$0")/plugins/claude-start/skills/startnew/SKILL.md"
+HOOKS_CACHE="$HOME/.claude/claude-start/hooks"
+SOURCE="$SCRIPT_DIR/plugins/claude-start/skills/startnew/SKILL.md"
+HOOKS_SRC="$SCRIPT_DIR/plugins/claude-start/hooks"
 
 echo ""
 echo "Claude_start installer"
@@ -27,6 +30,20 @@ fi
 mkdir -p "$COMMANDS_DIR"
 cp "$SOURCE" "$COMMANDS_DIR/startnew.md"
 echo "✓ /startnew command installed"
+
+# Install the /startupdate command (if it exists)
+STARTUPDATE_SRC="$SCRIPT_DIR/plugins/claude-start/skills/startupdate/SKILL.md"
+if [ -f "$STARTUPDATE_SRC" ]; then
+  cp "$STARTUPDATE_SRC" "$COMMANDS_DIR/startupdate.md"
+  echo "✓ /startupdate command installed"
+fi
+
+# Cache hook scripts so /startupdate can refresh existing projects
+mkdir -p "$HOOKS_CACHE"
+cp "$HOOKS_SRC/memory-signal.sh" "$HOOKS_CACHE/memory-signal.sh"
+cp "$HOOKS_SRC/memory-consolidate.sh" "$HOOKS_CACHE/memory-consolidate.sh"
+chmod +x "$HOOKS_CACHE/memory-signal.sh" "$HOOKS_CACHE/memory-consolidate.sh"
+echo "✓ Hook scripts cached at ~/.claude/claude-start/hooks"
 
 # Check if claude-code-setup plugin is already installed
 PLUGIN_INSTALLED=$(cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | grep -i "claude-code-setup" || echo "")
