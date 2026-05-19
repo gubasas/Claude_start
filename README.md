@@ -82,7 +82,9 @@ Creates a `memory/` folder with two layers:
 - **`memory/MEMORY.md`** — the index. Always loaded into context. One-liner per topic, pointers only — never detail. Stays concise so it never gets truncated.
 - **`memory/project.md`** — the first detail file, pre-populated with everything from the intake. Future detail files are created as the project evolves (decisions made, bugs root-caused, patterns established, constraints discovered).
 
-Also creates **`.claude/settings.json`** with stack-appropriate permissions, and installs two memory-maintenance hooks automatically (see below).
+During setup you'll choose between two memory modes — **perfect recall** (scans every exchange for decisions, preferences, and bug fixes as they happen; uses some extra tokens) or **before-compact only** (no per-turn overhead, saves everything in one pass when the session grows long). Most people are fine with either.
+
+Also creates **`.claude/settings.json`** with stack-appropriate permissions, and installs the appropriate memory hooks based on your choice (see below).
 
 ### Step 4 — Plugin check
 
