@@ -1,13 +1,13 @@
 ---
 name: startnew
-version: "2.1.0"
+version: "2.2.0"
 description: Bootstrap a new project — creates CLAUDE.md, memory, settings, MCP servers, hooks, subagents, and slash commands automatically
 allowed-tools: [Read, Write, Edit, Bash, WebFetch, Agent]
 ---
 
 # Claude_start — New Project Bootstrap
 
-**VERSION GUARD — read before doing anything else:** This file is version 2.1.0. If you are about to install or overwrite `~/.claude/commands/startnew.md`, first check the version field of the currently installed file. If the installed version is equal to or higher than this file's version, do NOT overwrite it — the installed copy is current or newer. Only overwrite if this file's version is strictly higher than what is installed.
+**VERSION GUARD — read before doing anything else:** This file is version 2.2.0. If you are about to install or overwrite `~/.claude/commands/startnew.md`, first check the version field of the currently installed file. If the installed version is equal to or higher than this file's version, do NOT overwrite it — the installed copy is current or newer. Only overwrite if this file's version is strictly higher than what is installed.
 
 You are the Claude_start setup assistant. Work through the steps below in order.
 
@@ -166,43 +166,69 @@ Before creating any hook files, ask the user:
 
 Store the answer as **MEMORY_MODE**. Use it throughout Step 3 to decide which hooks to create and register.
 
+### OS Detection
+
+Detect the OS now — you'll need it for both the settings.json hook commands and the hook file copying below:
+
+```bash
+uname -s 2>/dev/null || echo "Windows"
+```
+
+- `Darwin` or `Linux` → **Mac/Linux** — hooks are `.sh`, commands registered directly
+- anything else → **Windows** — hooks are `.ps1`, commands registered via `pwsh -File`
+
+Store this as **OS_TYPE** (`mac` or `windows`).
+
 ### Project Config
 
 **`.claude/settings.json`** — create with stack-appropriate permissions.
 
-**If MEMORY_MODE = 1 (perfect recall):**
+**Mac/Linux — MEMORY_MODE = 1:**
 ```json
 {
-  "permissions": {
-    "allow": []
-  },
+  "permissions": {"allow": []},
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.sh", "args": []},
-          {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
-        ]
-      }
-    ]
+    "Stop": [{"hooks": [
+      {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.sh", "args": []},
+      {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
+    ]}]
   }
 }
 ```
 
-**If MEMORY_MODE = 2 (before-compact only):**
+**Mac/Linux — MEMORY_MODE = 2:**
 ```json
 {
-  "permissions": {
-    "allow": []
-  },
+  "permissions": {"allow": []},
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
-        ]
-      }
-    ]
+    "Stop": [{"hooks": [
+      {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
+    ]}]
+  }
+}
+```
+
+**Windows — MEMORY_MODE = 1:**
+```json
+{
+  "permissions": {"allow": []},
+  "hooks": {
+    "Stop": [{"hooks": [
+      {"type": "command", "command": "pwsh", "args": ["-ExecutionPolicy", "Bypass", "-File", "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.ps1"]},
+      {"type": "command", "command": "pwsh", "args": ["-ExecutionPolicy", "Bypass", "-File", "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.ps1"]}
+    ]}]
+  }
+}
+```
+
+**Windows — MEMORY_MODE = 2:**
+```json
+{
+  "permissions": {"allow": []},
+  "hooks": {
+    "Stop": [{"hooks": [
+      {"type": "command", "command": "pwsh", "args": ["-ExecutionPolicy", "Bypass", "-File", "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.ps1"]}
+    ]}]
   }
 }
 ```
@@ -262,9 +288,9 @@ Thumbs.db
 
 ### Memory Maintenance Hooks
 
-The hook scripts live in `~/.claude/claude-start/hooks/` (installed there by `install.sh` / `update.sh`). Copy them into the project — do not write the script content inline.
+Use **OS_TYPE** detected above. The hook scripts live in `~/.claude/claude-start/hooks/` — copy the correct extension, do not write script content inline.
 
-**If MEMORY_MODE = 1:**
+**Mac/Linux — MEMORY_MODE = 1:**
 ```bash
 mkdir -p .claude/hooks
 cp ~/.claude/claude-start/hooks/memory-signal.sh .claude/hooks/memory-signal.sh
@@ -272,11 +298,24 @@ cp ~/.claude/claude-start/hooks/memory-consolidate.sh .claude/hooks/memory-conso
 chmod +x .claude/hooks/memory-signal.sh .claude/hooks/memory-consolidate.sh
 ```
 
-**If MEMORY_MODE = 2:**
+**Mac/Linux — MEMORY_MODE = 2:**
 ```bash
 mkdir -p .claude/hooks
 cp ~/.claude/claude-start/hooks/memory-consolidate.sh .claude/hooks/memory-consolidate.sh
 chmod +x .claude/hooks/memory-consolidate.sh
+```
+
+**Windows — MEMORY_MODE = 1:**
+```powershell
+New-Item -ItemType Directory -Force -Path .claude/hooks | Out-Null
+Copy-Item "$HOME\.claude\claude-start\hooks\memory-signal.ps1" ".claude\hooks\memory-signal.ps1"
+Copy-Item "$HOME\.claude\claude-start\hooks\memory-consolidate.ps1" ".claude\hooks\memory-consolidate.ps1"
+```
+
+**Windows — MEMORY_MODE = 2:**
+```powershell
+New-Item -ItemType Directory -Force -Path .claude/hooks | Out-Null
+Copy-Item "$HOME\.claude\claude-start\hooks\memory-consolidate.ps1" ".claude\hooks\memory-consolidate.ps1"
 ```
 
 ---

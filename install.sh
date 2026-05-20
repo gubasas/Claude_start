@@ -60,6 +60,8 @@ fi
 mkdir -p "$HOOKS_CACHE"
 cp "$HOOKS_SRC/memory-signal.sh" "$HOOKS_CACHE/memory-signal.sh"
 cp "$HOOKS_SRC/memory-consolidate.sh" "$HOOKS_CACHE/memory-consolidate.sh"
+cp "$HOOKS_SRC/memory-signal.ps1" "$HOOKS_CACHE/memory-signal.ps1"
+cp "$HOOKS_SRC/memory-consolidate.ps1" "$HOOKS_CACHE/memory-consolidate.ps1"
 chmod +x "$HOOKS_CACHE/memory-signal.sh" "$HOOKS_CACHE/memory-consolidate.sh"
 echo "✓ Hook scripts cached at ~/.claude/claude-start/hooks"
 echo "  → Run /startupdate in any existing project to refresh its hooks."

@@ -27,6 +27,8 @@ if (Test-Path $StartupdateSrc) {
 New-Item -ItemType Directory -Force -Path $HooksCache | Out-Null
 Copy-Item "$HooksSrc\memory-signal.sh" "$HooksCache\memory-signal.sh" -Force
 Copy-Item "$HooksSrc\memory-consolidate.sh" "$HooksCache\memory-consolidate.sh" -Force
+Copy-Item "$HooksSrc\memory-signal.ps1" "$HooksCache\memory-signal.ps1" -Force
+Copy-Item "$HooksSrc\memory-consolidate.ps1" "$HooksCache\memory-consolidate.ps1" -Force
 Write-Host "v Hook cache refreshed at ~/.claude/claude-start/hooks"
 Write-Host ""
 Write-Host "Run /startupdate in any existing project to apply the latest hooks."

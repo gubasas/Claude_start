@@ -1,6 +1,6 @@
 ---
 name: startupdate
-version: "2.1.0"
+version: "2.2.0"
 description: Updates Claude_start memory hooks in the current project to the latest installed version
 allowed-tools: [Read, Write, Edit, Bash]
 ---
@@ -35,63 +35,77 @@ ls ~/.claude/claude-start/hooks/ 2>/dev/null || echo "NOT_FOUND"
 
 ---
 
-## Step 3 — Show what will be updated
-
-Read the current hook files to note their version (first comment line):
+## Step 3 — Detect OS and hook extension in use
 
 ```bash
-head -3 .claude/hooks/memory-signal.sh 2>/dev/null || echo "NOT_PRESENT"
-head -3 .claude/hooks/memory-consolidate.sh 2>/dev/null || echo "NOT_PRESENT"
-head -3 ~/.claude/claude-start/hooks/memory-signal.sh 2>/dev/null
-head -3 ~/.claude/claude-start/hooks/memory-consolidate.sh 2>/dev/null
+uname -s 2>/dev/null || echo "Windows"
 ```
 
-Tell the user briefly what's being replaced and what it's being replaced with (just the comment lines — no need to diff the full scripts).
+- `Darwin` or `Linux` → **Mac/Linux**, extension = `.sh`
+- anything else → **Windows**, extension = `.ps1`
+
+Also check which hooks are present in `.claude/hooks/` to determine if this project uses perfect recall (signal + consolidate) or before-compact only (consolidate only).
+
+Show the user the first comment line of each installed hook vs. the cached version so they can see what's changing.
 
 ---
 
 ## Step 4 — Apply the update
 
-Determine which hooks are currently installed in this project and update only those:
+Copy the matching extension from the cache, updating only hooks that are already present in the project.
 
-**If `memory-signal.sh` exists in `.claude/hooks/`:**
+**Mac/Linux — if `memory-signal.sh` exists:**
 ```bash
 cp ~/.claude/claude-start/hooks/memory-signal.sh .claude/hooks/memory-signal.sh
 chmod +x .claude/hooks/memory-signal.sh
 ```
 
-**Always update `memory-consolidate.sh`** (it's installed in both memory modes):
+**Mac/Linux — always:**
 ```bash
 cp ~/.claude/claude-start/hooks/memory-consolidate.sh .claude/hooks/memory-consolidate.sh
 chmod +x .claude/hooks/memory-consolidate.sh
+```
+
+**Windows — if `memory-signal.ps1` exists:**
+```powershell
+Copy-Item "$HOME\.claude\claude-start\hooks\memory-signal.ps1" ".claude\hooks\memory-signal.ps1" -Force
+```
+
+**Windows — always:**
+```powershell
+Copy-Item "$HOME\.claude\claude-start\hooks\memory-consolidate.ps1" ".claude\hooks\memory-consolidate.ps1" -Force
 ```
 
 ---
 
 ## Step 5 — Verify settings.json hook registration
 
-Read `.claude/settings.json` and confirm the Stop hooks section still registers both scripts. If either is missing, add it back using the merge pattern (read → edit → write, never overwrite the full file).
+Read `.claude/settings.json` and confirm the Stop hooks section registers the correct scripts for this OS. If any are missing, add them back (read → edit → write, never overwrite the full file).
 
-Expected Stop hook entries (the ones that may be missing):
+**Mac/Linux expected entries:**
 ```json
-{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.sh", "args": []}
 {"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
+{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.sh", "args": []}
 ```
 
-Note: `memory-signal.sh` should only be registered if it was present before the update (i.e. the project uses perfect recall mode).
+**Windows expected entries:**
+```json
+{"type": "command", "command": "pwsh", "args": ["-ExecutionPolicy", "Bypass", "-File", "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.ps1"]}
+{"type": "command", "command": "pwsh", "args": ["-ExecutionPolicy", "Bypass", "-File", "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.ps1"]}
+```
+
+Note: `memory-signal` entries should only be present/added if that hook was already in the project.
 
 ---
 
 ## Step 6 — Report
 
-Print a short summary:
-
 ```
 /startupdate complete
 
 Updated:
-  .claude/hooks/memory-consolidate.sh
-  {.claude/hooks/memory-signal.sh  ← if applicable}
+  .claude/hooks/memory-consolidate.{sh|ps1}
+  {.claude/hooks/memory-signal.{sh|ps1}  ← if applicable}
 
 settings.json: {verified / repaired}
 

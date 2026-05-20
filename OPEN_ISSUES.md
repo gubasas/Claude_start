@@ -36,13 +36,9 @@ Hook scripts are now standalone files at `plugins/claude-start/hooks/`. `install
 
 ---
 
-### 4. Windows: memory hooks use `.sh` — no `.ps1` equivalents
+### ~~4. Windows: memory hooks use `.sh` — no `.ps1` equivalents~~ ✓ RESOLVED *(2026-05-19)*
 
-**What we know:** `/startnew` generates `.sh` hook scripts. On Windows (PowerShell), these won't execute.
-
-**Impact:** Windows users get hook entries registered in `settings.json` pointing to `.sh` files that can't run. Memory hooks silently fail.
-
-**Next step:** Add PowerShell equivalents (`memory-signal.ps1`, `memory-consolidate.ps1`) to the SKILL.md templates and register the correct extension based on OS detection in Step 3.
+`memory-signal.ps1` and `memory-consolidate.ps1` added. SKILL.md now detects OS at the start of Step 3 and branches on `.sh` vs `.ps1` for both file copying and `settings.json` registration (`pwsh -File` on Windows). `/startupdate` also handles both extensions.
 
 ---
 
@@ -58,6 +54,7 @@ Hook scripts are now standalone files at `plugins/claude-start/hooks/`. `install
 
 ## Resolved
 
+- **Windows `.ps1` hooks** — `memory-signal.ps1` and `memory-consolidate.ps1` added; OS detection in Step 3 branches on extension and `settings.json` registration format. `/startupdate` handles both. *(2026-05-19)*
 - **Per-project hook updater** — `/startupdate` command added; hooks stored as standalone files in repo, cached to `~/.claude/claude-start/hooks/` by install/update scripts. *(2026-05-19)*
 - **Pattern B regex missing em-dash/en-dash** — `[-*•]` didn't match Claude's em-dash bullets. Fixed: changed to `[-–—*•]`. *(2026-05-19)*
 - **memory-signal.sh cooldown before detection** — hook exited early for 4 of every 5 turns before checking patterns. Fixed: cooldown now gates only the fire, not the detection. *(2026-05-19)*
