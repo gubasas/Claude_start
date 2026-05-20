@@ -6,15 +6,15 @@ Known gaps and things to revisit. Add an entry when you find something; check it
 
 ## Unresolved
 
-### 1. Desktop app hook behavior — needs proper testing
+### 1. Desktop app hook behavior — partially confirmed
 
-**What we know:** During smoke testing, hooks did not appear to fire when using Claude Code inside the Claude desktop app (counter file was never created). Claude still wrote memory entries because the CLAUDE.md instructions tell it to do so proactively.
+**What we know:** `memory-consolidate.sh` (Stop hook) fires in the Claude desktop app — confirmed by the checkpoint message appearing during a real session. This means Stop hooks work in the desktop app in general.
 
-**What we don't know:** Whether this is universal behavior or environment-specific. The Claude desktop app's hook execution model isn't documented. Hook behavior may differ across app versions.
+**What we don't know:** Whether `memory-signal.sh` fires correctly. It's harder to confirm — requires real trigger phrases in a working session rather than a quick test. The earlier smoke test that suggested hooks weren't firing was likely a false negative (counter file may have landed in wrong directory due to the dirname bug, which is now fixed).
 
-**Impact:** Users on the desktop app in perfect recall mode rely entirely on Claude following CLAUDE.md instructions. If those instructions are followed (they appeared to be in our test), the outcome is the same. But the hook-based signal detection (Pattern A / B in memory-signal.sh) never runs, so memory writes depend on Claude proactively noticing — which may be less reliable.
+**Impact:** Likely lower than originally thought. If Stop hooks fire, both hooks should work. The README desktop app caveat ("may not fire") is now probably overcautious — but leave it until signal is confirmed.
 
-**Next step:** Test hooks in the desktop app across at least two different sessions. Check whether `.claude/hooks/.ms_count` increments after each Claude response. If hooks never fire in the desktop app, document it definitively and consider surfacing a warning during `/startnew` setup when the desktop app is detected (if detectable).
+**Next step:** During a real project session in the desktop app, check whether `.claude/hooks/.ms_count` increments and `.ms_last` updates after a trigger phrase exchange. If confirmed, update the README caveat and close this issue.
 
 ---
 
