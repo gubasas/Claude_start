@@ -372,6 +372,25 @@ Create `.claude/agents/{name}.md` with YAML frontmatter and system prompt.
 ### Slash Commands
 Create `.claude/commands/{name}.md`.
 
+### After executing all recommendations, verify memory hooks are still registered
+
+Read `.claude/settings.json` and confirm the Stop hooks array still contains the memory hook entries from Step 3. They may have been lost if Step 6 wrote a new settings.json.
+
+Check for the presence of `memory-consolidate.sh` (always required) and `memory-signal.sh` (required if MEMORY_MODE = 1). If either is missing, re-add it now by editing the file — do not replace the whole file.
+
+**If MEMORY_MODE = 1**, the Stop hooks array must contain both:
+```json
+{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-signal.sh", "args": []},
+{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
+```
+
+**If MEMORY_MODE = 2**, the Stop hooks array must contain:
+```json
+{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/memory-consolidate.sh", "args": []}
+```
+
+Only proceed to Step 7 once the memory hooks are confirmed present.
+
 ### After executing all recommendations, add this sentence to the Step 8 summary AND to the CLAUDE.md update in Step 7:
 
 > "All recommended tools were installed automatically. If you want to know what any of them do, just ask Claude — it'll explain anything in your .claude/ folder."
