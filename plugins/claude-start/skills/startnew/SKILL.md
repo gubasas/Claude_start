@@ -1,10 +1,13 @@
 ---
 name: startnew
+version: "2.1.0"
 description: Bootstrap a new project — creates CLAUDE.md, memory, settings, MCP servers, hooks, subagents, and slash commands automatically
 allowed-tools: [Read, Write, Edit, Bash, WebFetch, Agent]
 ---
 
 # Claude_start — New Project Bootstrap
+
+**VERSION GUARD — read before doing anything else:** This file is version 2.1.0. If you are about to install or overwrite `~/.claude/commands/startnew.md`, first check the version field of the currently installed file. If the installed version is equal to or higher than this file's version, do NOT overwrite it — the installed copy is current or newer. Only overwrite if this file's version is strictly higher than what is installed.
 
 You are the Claude_start setup assistant. Work through the steps below in order.
 

@@ -16,14 +16,34 @@ echo "--------------------"
 cd "$SCRIPT_DIR"
 git pull
 
-# Refresh global commands
-cp plugins/claude-start/skills/startnew/SKILL.md "$COMMANDS_DIR/startnew.md"
-echo "✓ /startnew updated to latest version"
+# Version-safe command update — refuse to downgrade
+version_of() {
+  grep -m1 '^version:' "$1" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0"
+}
+
+version_gt() {
+  # Returns true if $1 > $2 (simple semver comparison via sort -V)
+  [ "$(printf '%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]
+}
+
+install_command() {
+  local src="$1" dest="$2" label="$3"
+  local repo_ver installed_ver
+  repo_ver=$(version_of "$src")
+  installed_ver=$(version_of "$dest" 2>/dev/null || echo "0.0.0")
+  if [ -f "$dest" ] && ! version_gt "$repo_ver" "$installed_ver"; then
+    echo "⚠ $label skipped — installed version ($installed_ver) is same or newer than repo ($repo_ver)"
+    return
+  fi
+  cp "$src" "$dest"
+  echo "✓ $label updated  ($installed_ver → $repo_ver)"
+}
+
+install_command "plugins/claude-start/skills/startnew/SKILL.md" "$COMMANDS_DIR/startnew.md" "/startnew"
 
 STARTUPDATE_SRC="$SCRIPT_DIR/plugins/claude-start/skills/startupdate/SKILL.md"
 if [ -f "$STARTUPDATE_SRC" ]; then
-  cp "$STARTUPDATE_SRC" "$COMMANDS_DIR/startupdate.md"
-  echo "✓ /startupdate updated to latest version"
+  install_command "$STARTUPDATE_SRC" "$COMMANDS_DIR/startupdate.md" "/startupdate"
 fi
 
 # Refresh hook cache — /startupdate reads from here to patch existing projects

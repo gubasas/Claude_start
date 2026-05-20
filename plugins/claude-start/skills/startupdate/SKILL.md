@@ -1,5 +1,6 @@
 ---
 name: startupdate
+version: "2.1.0"
 description: Updates Claude_start memory hooks in the current project to the latest installed version
 allowed-tools: [Read, Write, Edit, Bash]
 ---
